@@ -6,7 +6,9 @@ const sv_cluster=require('../src/app-server');
 const jwt=require('jsonwebtoken');
 const app = express();
 const dotenv =require("dotenv").config()
-
+const {fork}=require('child_process');
+const cluster=require('cluster');
+const minimist=require('minimist')
 
 //const ProductManager=require('./Manager/productManager.js');
 
@@ -22,9 +24,33 @@ const res = require('express/lib/response');
 
 const { name, internet, } = faker;
 
-///llaamr cluster
+const options = {default:{modo:'fork'}, alias:{p:'port'}}
+const args = minimist(process.argv.slice(2),options)
 
 
+const PORT = process.argv[2]||8080
+
+switch (args.modo) {
+    case 'fork':
+        const server = app.listen(PORT,()=>console.log(`Listening on port ${PORT}`))
+        break;
+    case 'cluster':
+        if(cluster.isPrimary){
+            console.log(`master ${process.pid} is running`)
+            for(let i = 0;i<numCPUs;i++){
+                cluster.fork()
+            }
+            cluster.on('exit',(worker,code,signal)=>{
+                console.log(`worker ${worker.process.pid} died`)
+            })
+        } else {
+            const server = app.listen(PORT,()=>console.log(`Listening on port ${PORT}`))
+            console.log(`worker ${process.pid} started`)
+        }
+        break;
+    default:
+        break;
+}
 
 
 app.use('/api/products-faker', function (req, res) {
